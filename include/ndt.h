@@ -61,6 +61,8 @@ private:
     std::string base_frame_;
     std::string map_frame_;
 
+    bool publish_tf_;
+
     // init guess for ndt
     geometry_msgs::PoseWithCovarianceStamped initial_pose_cov_msg_;
 
@@ -81,7 +83,7 @@ private:
                        const std::string & source_frame,
                        const geometry_msgs::TransformStamped::Ptr & transform_stamped_ptr);
     void publish_tf(const std::string & frame_id, const std::string & child_frame_id,
-                    const geometry_msgs::PoseStamped & pose_msg);
+                    const geometry_msgs::PoseWithCovarianceStamped & pose_msg);
 
     void callback_pointsmap(const sensor_msgs::PointCloud2::ConstPtr & pointcloud2_msg_ptr);
     void callback_init_pose(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr & pose_conv_msg_ptr);

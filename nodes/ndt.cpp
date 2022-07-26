@@ -7,7 +7,7 @@ NdtLocalizer::NdtLocalizer(ros::NodeHandle &nh, ros::NodeHandle &private_nh):nh_
 
   // Publishers
   sensor_aligned_pose_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("points_aligned", 10);
-  ndt_pose_pub_ = nh_.advertise<geometry_msgs::PoseStamped>("ndt_pose", 10);
+  ndt_pose_pub_ = nh_.advertise<geometry_msgs::PoseWithCovarianceStamped>("ndt_pose", 10);
   exe_time_pub_ = nh_.advertise<std_msgs::Float32>("exe_time_ms", 10);
   transform_probability_pub_ = nh_.advertise<std_msgs::Float32>("transform_probability", 10);
   iteration_num_pub_ = nh_.advertise<std_msgs::Float32>("iteration_num", 10);
@@ -212,17 +212,20 @@ void NdtLocalizer::callback_pointcloud(
   pre_trans = result_pose_matrix;
   
   // publish
-  geometry_msgs::PoseStamped result_pose_stamped_msg;
+  geometry_msgs::PoseWithCovarianceStamped result_pose_stamped_msg;
   result_pose_stamped_msg.header.stamp = sensor_ros_time;
   result_pose_stamped_msg.header.frame_id = map_frame_;
-  result_pose_stamped_msg.pose = result_pose_msg;
+  result_pose_stamped_msg.pose.pose = result_pose_msg;
 
   if (is_converged) {
     ndt_pose_pub_.publish(result_pose_stamped_msg);
   }
 
   // publish tf(map frame to base frame)
-  publish_tf(map_frame_, base_frame_, result_pose_stamped_msg);
+  if (publish_tf_ == true){
+    publish_tf(map_frame_, base_frame_, result_pose_stamped_msg);
+  }
+  
 
   // publish aligned point cloud
   pcl::PointCloud<pcl::PointXYZ>::Ptr sensor_points_mapTF_ptr(new pcl::PointCloud<pcl::PointXYZ>);
@@ -274,6 +277,7 @@ void NdtLocalizer::init_params(){
   private_nh_.getParam("step_size", step_size);
   private_nh_.getParam("resolution", resolution);
   private_nh_.getParam("max_iterations", max_iterations);
+  private_nh_.getParam("publish_tf", publish_tf_);
 
   map_frame_ = "map";
 
@@ -373,19 +377,19 @@ bool NdtLocalizer::get_transform(
 
 void NdtLocalizer::publish_tf(
   const std::string & frame_id, const std::string & child_frame_id,
-  const geometry_msgs::PoseStamped & pose_msg)
+  const geometry_msgs::PoseWithCovarianceStamped & pose_msg)
 {
   geometry_msgs::TransformStamped transform_stamped;
   transform_stamped.header.frame_id = frame_id;
   transform_stamped.child_frame_id = child_frame_id;
   transform_stamped.header.stamp = pose_msg.header.stamp;
 
-  transform_stamped.transform.translation.x = pose_msg.pose.position.x;
-  transform_stamped.transform.translation.y = pose_msg.pose.position.y;
-  transform_stamped.transform.translation.z = pose_msg.pose.position.z;
+  transform_stamped.transform.translation.x = pose_msg.pose.pose.position.x;
+  transform_stamped.transform.translation.y = pose_msg.pose.pose.position.y;
+  transform_stamped.transform.translation.z = pose_msg.pose.pose.position.z;
 
   tf2::Quaternion tf_quaternion;
-  tf2::fromMsg(pose_msg.pose.orientation, tf_quaternion);
+  tf2::fromMsg(pose_msg.pose.pose.orientation, tf_quaternion);
   transform_stamped.transform.rotation.x = tf_quaternion.x();
   transform_stamped.transform.rotation.y = tf_quaternion.y();
   transform_stamped.transform.rotation.z = tf_quaternion.z();
